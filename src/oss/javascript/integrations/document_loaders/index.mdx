@@ -61,6 +61,55 @@ LangChain.js categorizes document loaders in two different ways:
 | [`MultiFileLoader`](/oss/integrations/document_loaders/file_loaders/multi_file) | Load data from multiple individual file paths | Package |
 | [`OracleDocLoader`](/oss/integrations/document_loaders/file_loaders/oracleai) | Ingest Oracle AI Vector Search tables or Oracle Text-supported files | Package |
 
+#### PDFs
+
+LangChain.js does not ship a PDF loader. Parse the file with a library such as [`pdf-parse`](https://www.npmjs.com/package/pdf-parse), then wrap each page in a @[Document]:
+
+<CodeGroup>
+```bash npm
+npm i pdf-parse
+```
+```bash yarn
+yarn add pdf-parse
+```
+```bash pnpm
+pnpm add pdf-parse
+```
+</CodeGroup>
+
+```typescript
+import { readFileSync } from "node:fs";
+import { Document } from "@langchain/core/documents";
+import { PDFParse } from "pdf-parse";
+
+async function loadPdfPages(filePath: string): Promise<Document[]> {
+  const parser = new PDFParse({ data: new Uint8Array(readFileSync(filePath)) });
+  try {
+    const { pages } = await parser.getText();
+    return pages.map(
+      (page) =>
+        new Document({
+          pageContent: page.text,
+          metadata: { source: filePath, page: page.num - 1 },
+        })
+    );
+  } finally {
+    await parser.destroy();
+  }
+}
+
+const docs = await loadPdfPages("./nke-10k-2023.pdf");
+console.log(docs.length);
+```
+
+```text
+107
+```
+
+`getText()` extracts the text layer only, so scanned or image-only PDFs return empty pages. Run OCR first, or use a document-parsing service, for those files.
+
+For a complete walkthrough that splits these pages into chunks and indexes them for retrieval, see the [Semantic search tutorial](/oss/langchain/knowledge-base).
+
 ### Web loaders
 
 #### Cloud providers
